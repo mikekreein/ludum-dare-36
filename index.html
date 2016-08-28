@@ -14,12 +14,12 @@
         </style>
     </head>
     <body>
-        <script src="libs/threejs/Three.js"></script>
-        <script src="libs/threejs/Detector.js"></script>
-        <script src="libs/cannon/cannon.js"></script>
-        <script src="libs/datgui/dat.gui.js"></script>
+        <script type="text/javascript" src="libs/threejs/Three.js"></script>
+        <script type="text/javascript" src="libs/threejs/Detector.js"></script>
+        <script type="text/javascript" src="libs/cannon/cannon.js"></script>
+        <script type="text/javascript" src="libs/datgui/dat.gui.js"></script>
 
-        <script>
+        <script type="text/javascript">
                 
         // Game Parameters
         var blockWeight = 10;
@@ -259,31 +259,30 @@
         
         function onMouseDown(e){
             // Find mesh from a ray
-            var entity = findNearestIntersectingObject(e.clientX,e.clientY,camera,meshes);
+            var entity = findNearestIntersectingObject(e.clientX,e.clientY,camera, scene.children);
             var pos = entity.point;
-            if(pos && !(entity.object.geometry instanceof THREE.PlaneGeometry)){
-                // Set marker on contact point
-                setClickMarker(pos.x,entity.object.position.y,pos.z,scene);
+            if(pos) {
+                if (!(entity.object.geometry instanceof THREE.PlaneGeometry)){
+                    // Set marker on contact point
+                    setClickMarker(pos.x,entity.object.position.y,pos.z,scene);
 
-                // Set the movement plane
-                setScreenPerpCenter(entity.object.position,camera);
+                    // Set the movement plane
+                    setScreenPerpCenter(entity.object.position,camera);
 
-                var idx = meshes.indexOf(entity.object);
-                if(idx !== -1){
-                    //addMouseConstraint(pos.x,pos.y,pos.z,bodies[idx]);
-                    addMouseConstraint(entity.object.position.x,entity.object.position.y,entity.object.position.z,bodies[idx]);
-                }
-            } else if (gplane) {
-                var pos = projectOntoPlane(e.clientX,e.clientY,gplane,camera);
-                if(pos){
+                    var idx = meshes.indexOf(entity.object);
+                    if(idx !== -1){
+                        //addMouseConstraint(pos.x,pos.y,pos.z,bodies[idx]);
+                        addMouseConstraint(entity.object.position.x,entity.object.position.y,entity.object.position.z,bodies[idx]);
+                    }
+                } else {
                     camera.position.set(pos.x + 12, 10, pos.z + 0);
                 }
-            }
+            } 
         }
         
         function onMouseMove(e){
             // Move and project on the plane
-            if (gplane && mouseConstraint) {
+            if (mouseConstraint) {
             
                 var meshesWithoutSelectedObject = scene.children.slice(0);
                 meshesWithoutSelectedObject.splice(meshesWithoutSelectedObject.indexOf(mouseConstraint.bodyA.mesh), 1);
@@ -354,15 +353,6 @@
             // Center at mouse position
             gplane.position.copy(point);
             gplane.position.y = Math.floor(gplane.position.y) + 0.6;
-        }
-
-        function projectOntoPlane(screenX,screenY,thePlane,camera) {
-            // project mouse to that plane
-            var hit = findNearestIntersectingObject(screenX,screenY,camera,[thePlane]);
-            if (hit) {
-                return hit.point;
-            }
-            return false;
         }
         
         function findNearestIntersectingObject(clientX,clientY,camera,objects) {
