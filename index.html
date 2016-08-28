@@ -18,6 +18,7 @@
         <script type="text/javascript" src="libs/threejs/Detector.js"></script>
         <script type="text/javascript" src="libs/cannon/cannon.js"></script>
         <script type="text/javascript" src="libs/datgui/dat.gui.js"></script>
+        <script type="text/javascript" src="libs/terraingen/canvasTerrain.js"></script>
 
         <script type="text/javascript">
                 
@@ -164,20 +165,34 @@
         } 
         
         function createTerrain() {
-            // Create the graphics
-            var terrainGeometry = new THREE.PlaneGeometry( 100, 100, 1, 1 );
-            mesh = new THREE.Mesh( terrainGeometry, new THREE.MeshLambertMaterial( { color: 0x777777 } ) );
-            mesh.quaternion.setFromAxisAngle(new THREE.Vector3(1,0,0), -Math.PI / 2);
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-            scene.add(mesh);
-        
-            // Create a plane for physics
-            var physicsShape = new CANNON.Plane();
-            var terrainPhysicsBody = new CANNON.Body({ mass: 0 });
-            terrainPhysicsBody.addShape(physicsShape);
-            terrainPhysicsBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0),-Math.PI/2);
-            world.addBody(terrainPhysicsBody);
+             // Create a matrix of height values
+            var matrix = [];
+            var dimension = 64;
+            var matrix = generateTerrainMap(dimension, 1, 4 + currentLevel);
+            
+            // Smooth terrain
+            for(var i = 0; i < 1; i++){
+                matrix = smooth(matrix, dimension+1, 0.6);
+            }
+            
+            // Create the heightfield
+            var hfShape = new CANNON.Heightfield(matrix, {
+                elementSize: 1
+            });
+            var hfBody = new CANNON.Body({ mass: 0 });
+            hfBody.addShape(hfShape);
+            hfBody.shapeOrientations[0].setFromAxisAngle(new CANNON.Vec3(1,0,0), -Math.PI * 0.5);
+            hfBody.position.set(-dimension/2, -3, dimension/2);
+            world.addBody(hfBody);
+            
+            // Create the Terrain Models
+            var randomColor = Math.random()*0xffffff;
+            var cubeMesh = cannonPhysicsBodyToThreeJSMesh(hfBody);
+            cubeMesh.material = new THREE.MeshPhongMaterial( { color: 0x777777 } );
+            cubeMesh.castShadow = true;
+            cubeMesh.receiveShadow = true;
+            cubeMesh.position.set(-dimension/2, -3, dimension/2);
+            scene.add(cubeMesh);
         }
         
         function createBlocks() {
