@@ -16,6 +16,8 @@
     <body>
         <script type="text/javascript" src="libs/threejs/three.js"></script>
         <script type="text/javascript" src="libs/threejs/Detector.js"></script>
+        <script type="text/javascript" src="libs/threejs/MouseControls.js"></script>
+        <script type="text/javascript" src="libs/threejs/OrbitControls.js"></script>
         <script type="text/javascript" src="libs/cannon/cannon.js"></script>
         <script type="text/javascript" src="libs/datgui/dat.gui.js"></script>
         <script type="text/javascript" src="libs/terraingen/canvasTerrain.js"></script>
@@ -32,19 +34,19 @@
         var meshes=[], bodies=[];
         var movedBodies = [];
         var world;
-        var camera, scene, renderer, clickMarker=false;
+        var camera, scene, renderer, clickMarker=false, gui=false;
         var jointBody, mouseConstraint;
-        var container, camera, scene, renderer, raycaster;
+        var container, camera, scene, renderer, raycaster, controls;
 
         // Initialize Three.js
         if ( !Detector.webgl ) {
             Detector.addGetWebGLMessage();
         }
 
-        startLevel();
+        restartLevel();
         mainLoop();
         
-        function startLevel() {
+        function restartLevel() {
             
             meshes=[], bodies=[], movedBodies=[];
             jointBody = false;
@@ -53,8 +55,10 @@
             
             initPhysics();
             initGraphics();
-            //initGUI();
+            initGUI();
             initGame();
+            
+            controls.reset();
         }
         
         function initPhysics(){
@@ -134,27 +138,30 @@
                 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
                 container.appendChild( renderer.domElement );
             }
+            
+            if (!controls) {
+                controls = new THREE.OrbitControls( camera, renderer.domElement );
+            }
 
             // event listeners
             window.addEventListener( 'resize', onWindowResize, false );
             window.addEventListener("mousemove", onMouseMove, false );
             window.addEventListener("mousedown", onMouseDown, false );
             window.addEventListener("mouseup", onMouseUp, false );
+            window.addEventListener("contextmenu", onRightClick, false );
             window.addEventListener("keypress", onKeyPress, false );
             window.addEventListener("wheel", onMouseWheel, false);
         }
         
         
         function initGUI() {
-            // http://workshop.chromeexperiments.com/examples/gui/
-            var gui = new dat.GUI({
-                height : 5 * 32 - 1
-            });
-            var folder1 = gui.addFolder("Folder 1");
-            folder1.add(this, 'N').min(1).max(256).step(1);
-            folder1.add(this, 'placedColor');
-            
-            gui.remember(this);
+            if (!gui) {
+                // http://workshop.chromeexperiments.com/examples/gui/
+                gui = new dat.GUI({
+                    height : 5 * 32 - 1
+                });
+                gui.add(this, 'restartLevel');
+            }
         }
         
         
@@ -274,7 +281,7 @@
                 movedBodies.push(blockBody);
                 if (movedBodies.length === bodies.length) {
                     ++ currentLevel;
-                    startLevel();
+                    restartLevel();
                 }
             }
         }
@@ -306,18 +313,22 @@
             var pos = entity.point;
             if(pos) {
                 if (!(entity.object.geometry instanceof THREE.PlaneGeometry)){
-                    // Set marker on contact point
-                    setClickMarker(pos.x,pos.y,pos.z,scene);
-                    console.log(entity.object.position);
                     var idx = meshes.indexOf(entity.object);
                     if(idx !== -1){
+                        // Set marker on contact point
+                        setClickMarker(pos.x,pos.y,pos.z,scene);
                         addMouseConstraint(entity.object.position.x,entity.object.position.y,entity.object.position.z, bodies[idx]);
+                        controls.enabled = false;
                         //addMouseConstraint(pos.x, pos.y, pos.z, bodies[idx]);
+                    } else {
+                        controls.enabled = true;
                     }
                 } else {
-                    //camera.position.set(pos.x + 12, 10, pos.z + 0);
+                    controls.enabled = true;
                 }
-            } 
+            } else {
+                controls.enabled = true;
+            }
         }
         
         function onMouseMove(e){
@@ -336,9 +347,9 @@
             }
         }
 
-        function onMouseUp(e) {
-          // remove the marker
-          removeClickMarker();
+        function onMouseUp(e) {        
+            // remove the marker
+            removeClickMarker();
 
           // Send the remove mouse joint to server
           removeJointConstraint();
@@ -359,6 +370,10 @@
             camera.zoom = Math.min(5, Math.max(0.1, zoomFactor));
             camera.updateProjectionMatrix();
             console.log(camera.zoom);
+        }
+        
+        function onRightClick(e) {
+            e.preventDefault();
         }
         
         function onWindowResize() {
@@ -423,10 +438,12 @@
         }
 
         function removeJointConstraint(){
-          // Remove constriant from world
-          freezeBlock(mouseConstraint.bodyA);
-          world.removeConstraint(mouseConstraint);
-          mouseConstraint = false;
+            if (mouseConstraint) {
+              // Remove constriant from world
+              freezeBlock(mouseConstraint.bodyA);
+              world.removeConstraint(mouseConstraint);
+              mouseConstraint = false;
+          }
         }
         
         
